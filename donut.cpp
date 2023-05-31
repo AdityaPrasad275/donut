@@ -18,7 +18,7 @@ Matrix operator*(const Matrix &a, const Matrix &b)
 }
 
 Donut::Donut(){
-    
+
 }
 
 Donut::~Donut(){
@@ -36,14 +36,20 @@ Donut::Donut(initialXYcurve& _initCurve, float k1, float k2, int screenWidth, in
     this->phiSpacing = phiSpacing;
 }
 
-Matrix Donut::calc_cords_XYZ(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ)
+Matrix Donut::calcCordsXYZ(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ)
 {
-    using std::cos;
-    using std::sin;
-
     Matrix init_xyz = {{_initialXYcurve.equationX(theta)},
                        {_initialXYcurve.equationY(theta)},
                        {0}};
+    return vectorRotator(init_xyz, phi, angleOfRotationAboutX, angleOfRotationAboutZ);
+}
+
+Matrix Donut::vectorRotator(Matrix &initVec, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ)
+{
+    
+    using std::cos;
+    using std::sin;
+
     Matrix phi_matrix = {{cos(phi), 0, sin(phi)},
                          {0, 1, 0},
                          {-sin(phi), 0, cos(phi)}};
@@ -53,7 +59,8 @@ Matrix Donut::calc_cords_XYZ(float theta, float phi, float angleOfRotationAboutX
     Matrix rotationAboutZ_matrix = {{cos(angleOfRotationAboutZ), -sin(angleOfRotationAboutZ), 0},
                                     {sin(angleOfRotationAboutZ), cos(angleOfRotationAboutZ), 0},
                                     {0, 0, 1}};
-    Matrix final_xyz = init_xyz * phi_matrix * rotationAboutX_matrix * rotationAboutZ_matrix;
+    Matrix finalVec = initVec * phi_matrix * rotationAboutX_matrix * rotationAboutZ_matrix;
+    return finalVec;
 }
 
 void Donut::rendering()

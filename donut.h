@@ -24,6 +24,7 @@ private:
     int screenWidth, screenHeight; 
     float k2, k1; //these handle the size and distance from screen of the our 3d shape
 
-    Matrix calc_cords_XYZ(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ);
+    Matrix calcCordsXYZ(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ);
+    Matrix vectorRotator(Matrix &initVec,float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ);
 };
 
