@@ -1,138 +1,138 @@
-#include"donut.h"
+#include "donut.h"
+#include<conio.h>
 typedef std::vector<std::vector<float>> Matrix;
+typedef std::vector<std::string> Screen;
+using std::cos;
+using std::sin;
+#define sleep(a) std::this_thread::sleep_for(std::chrono::milliseconds(a))
 
-Matrix operator*(const Matrix &a, const Matrix &b)
+Donut::Donut(initialXYcurve &_initCurve, float k2, int screenWidth, int screenHeight, float thetaSpacing, float phiSpacing)
 {
-    Matrix c(a.size(), std::vector<float>(b[0].size(), 0));
-    for (int i = 0; i < a.size(); i++)
-    {
-        for (int j = 0; j < b[0].size(); j++)
-        {
-            for (int k = 0; k < b.size(); k++)
-            {
-                c[i][j] += a[i][k] * b[k][j];
-            }
-        }
-    }
-    return c;
-}
-
-Donut::Donut(){
-
-}
-
-Donut::~Donut(){
-
-}
-
-Donut::Donut(initialXYcurve& _initCurve, float k1, float k2, int screenWidth, int screenHeight, float thetaSpacing, float phiSpacing)
-{
-    this->_initialXYcurve = _initCurve;
-    this->k1 = k1;
-    this->k2 = k2;
-    this->screenWidth = screenWidth;
-    this->screenHeight = screenHeight;
+    this->initCurve = _initCurve;
     this->thetaSpacing = thetaSpacing;
     this->phiSpacing = phiSpacing;
+    this->screenWidth = screenWidth;
+    this->screenHeight = screenHeight;
+    this->dis_objectFromScreen = k2;
+    calc_allObjectVectors();
+    calc_allLuminanceVectors();
+    this->dis_userFromScreen = calc_dis_userFromScreen();
 }
 
-Matrix Donut::calcCordsXYZ(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ)
-{
-    Matrix init_xyz = {{_initialXYcurve.equationX(theta),
-                       _initialXYcurve.equationY(theta),
-                       0}};
-    return vectorRotator(init_xyz, phi, angleOfRotationAboutX, angleOfRotationAboutZ);
+void Donut::renderObject()
+{   
+    float angleAbtX = 0.1f;
+    float angleAbtZ = 0.1f;
+    while(true){
+        std::cout << std::string(100, '\n');
+
+        //system("cls");
+        Screen screen = renderScreen(angleAbtX, angleAbtZ);
+        for(int i = 0; i < screen.size(); i++)
+            std::cout << screen[i] << std::endl;
+
+        sleep(100);
+        angleAbtX += 0.1f;
+        angleAbtZ += 0.1f;
+    }
 }
 
-Matrix Donut::vectorRotator(Matrix &initVec, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ)
+Screen Donut::renderScreen(float angleAbtX, float angleAbtZ)
 {
-    
-    using std::cos;
-    using std::sin;
+    Matrix zBuffer(screenHeight, std::vector<float>(screenWidth, 0));
+    Screen screen(screenHeight, std::string(screenWidth, ' '));
 
-    Matrix phi_matrix = {{cos(phi), 0, sin(phi)},
-                         {0, 1, 0},
-                         {-sin(phi), 0, cos(phi)}};
-    Matrix rotationAboutX_matrix = {{1, 0, 0},
-                                    {0, cos(angleOfRotationAboutX), sin(angleOfRotationAboutX)},
-                                    {0, -sin(angleOfRotationAboutX), cos(angleOfRotationAboutX)}};
-    Matrix rotationAboutZ_matrix = {{cos(angleOfRotationAboutZ), sin(angleOfRotationAboutZ), 0},
-                                    {-sin(angleOfRotationAboutZ), cos(angleOfRotationAboutZ), 0},
-                                    {0, 0, 1}};
-    Matrix finalVec = initVec * phi_matrix * rotationAboutX_matrix * rotationAboutZ_matrix;
-    return finalVec;
-}
+    for(int i = 0; i < allObjectVectors.size(); i++){
+        Matrix coords = rotate(angleAbtX, angleAbtZ, i, allObjectVectors);
+        float x = coords[0][0];
+        float y = coords[0][1];
+        float z = coords[0][2];
+        float invZ = 1/z;
 
-float Donut::calcLunminace(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ)
-{
-    Matrix initNormalVec = {{std::cos(theta), std::sin(theta), 0}};
-    Matrix finalNormalVec = vectorRotator(initNormalVec, phi, angleOfRotationAboutX, angleOfRotationAboutZ);
-    return finalNormalVec[0][1] - finalNormalVec[0][2];
-}
+        int projectedX_index = (int)(screenWidth/2 + (dis_userFromScreen * x)/ (dis_objectFromScreen + dis_userFromScreen));
+        int projectedY_index = (int)(screenHeight/2 + (dis_userFromScreen * y)/ (dis_objectFromScreen + dis_userFromScreen));
 
-std::vector<std::string> Donut::rendering3Dobject(float angleOfRotationAboutX, float angleOfRotationAboutZ)
-{
-    //initialize a 2d vector of strings with size screen_widht and screen_height with spaces
-    std::vector<std::string> screen(screenWidth, std::string(screenHeight, ' '));
-    //initialize a 2d vector of floats with size screen_widht and screen_height with 0
-    std::vector<std::vector<float>> zBuffer(screenWidth, std::vector<float>(screenHeight, 0));
-
-    //loop through all the possible values of theta and phi
-    for (float theta = _initialXYcurve.startTheta; theta < _initialXYcurve.endTheta; theta += thetaSpacing)
-    {
-        for (float phi = 0; phi < 2 * M_PI; phi += phiSpacing)
-        {
-            //calculate the x,y,z coordinates of the point
-            Matrix xyz = calcCordsXYZ(theta, phi, angleOfRotationAboutX, angleOfRotationAboutZ);
-            float x = xyz[0][0];
-            float y = xyz[0][1];
-            float z = k2 + xyz[0][2];
-            float oneOverZ = 1/z;
-
-            //calculate the luminance of the point
-            float luminance = calcLunminace(theta, phi, angleOfRotationAboutX, angleOfRotationAboutZ);
-
-            //calculate the index of the projected x,y coordinates in the screen vector
-            int projectedX_index = (int)(screenWidth / 2 + k1*oneOverZ*x);
-            int projectedY_index = (int)(screenHeight / 2 - k1*oneOverZ*y);
-
-            if (luminance>0)
-            {
-                //if the z coordinate of the point is greater than the z coordinate of the point in the zBuffer
-                if (zBuffer[projectedX_index][projectedY_index] < oneOverZ)
-                {
-                    //update the z coordinate of the point in the zBuffer
-                    zBuffer[projectedX_index][projectedY_index] = oneOverZ;
-                    //update the point in the screen vector
-                    screen[projectedX_index][projectedY_index] = ".,-~:;=!*#$@"[int(luminance * 8)];
-                }
+        Matrix luminanceVec = rotate(angleAbtX, angleAbtZ, i, allLuminanceVectors);
+        float luminance = luminanceVec[0][1] - luminanceVec[0][2];
+        //if(projectedX_index >= 0 && projectedX_index < screenWidth && projectedY_index >= 0 && projectedY_index < screenHeight){
+        if (luminance>0){
+            //if the z coordinate of the point is greater than the z coordinate of the point in the zBuffer
+            if (zBuffer[projectedY_index][projectedX_index] > invZ){
+                //update the z coordinate of the point in the zBuffer
+                zBuffer[projectedY_index][projectedX_index] = invZ;
+                //update the point in the screen vector
+                screen[projectedY_index][projectedX_index] = ".,-~:;=!*#$@"[int(luminance * 10)];
             }
         }
+        //}
     }
     return screen;
 }
 
-void Donut::rotating3D()
+float Donut::calc_dis_userFromScreen()
 {
-    float angleOfRotationAboutX = 0;
-    float angleOfRotationAboutZ = 0;
-    while (true)
-    {
-        //clear the screen
-        system("CLS");
-        //std::cout << std::string('\n', 100);
-        //render the 3d object
-        std::vector<std::string> screen = rendering3Dobject(angleOfRotationAboutX, angleOfRotationAboutZ);
-        //print the screen
-        for (int i = 0; i < screen.size(); i++)
-        {
-            std::cout << screen[i] << std::endl;
+    float maxDistance = 0;
+    for (auto &objectVector : allObjectVectors){
+        float x = objectVector[0];
+        float y = objectVector[1];
+        float x2 = x * x;
+        float y2 = y * y;
+        float distance = sqrt(x2 + y2);
+        if (distance > maxDistance)
+            maxDistance = distance;
+    }
+    if(maxDistance > dis_objectFromScreen){
+        dis_objectFromScreen = maxDistance + 5;
+        for(int i = 0; i < allObjectVectors.size(); i++)
+            allObjectVectors[i][2] += maxDistance + 5;
+    }
+    
+    if(maxDistance < (0.75f)*((float)std::min(screenHeight, screenWidth)))
+        return dis_objectFromScreen;
+
+    float k1 = (float)dis_objectFromScreen / (( 8.0f * maxDistance)/(3.0f*((float)std::min(screenHeight, screenWidth))) - 1.0f);
+    return k1 < 0 ? dis_objectFromScreen : k1;
+}
+
+void Donut::calc_allObjectVectors()
+{
+    float theta = initCurve.startTheta;
+    while(theta < initCurve.endTheta){
+        float phi = 0;
+        while(phi < 2*M_PI){
+            float x = initCurve.equationX(theta);
+            float y = initCurve.equationY(theta);
+            float z = 0;
+            allObjectVectors.push_back({x*cos(phi) - z*sin(phi), y, x*sin(phi) - z*sin(phi) + dis_objectFromScreen});
+            phi += phiSpacing;
         }
-        //update the angle of rotation
-        angleOfRotationAboutX += 0.05;
-        angleOfRotationAboutZ += 0.05;
-        //sleep for some milliseconds
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        theta += thetaSpacing;
     }
 }
 
+void Donut::calc_allLuminanceVectors()
+{
+    float theta = initCurve.startTheta;
+    while(theta < initCurve.endTheta){
+        float phi = 0;
+        while(phi < 2*M_PI){
+            float x = cos(theta);
+            float y = sin(theta);
+            float z = 0;
+            allLuminanceVectors.push_back({{x*cos(phi) - z*sin(phi), y, x*sin(phi) - z*sin(phi)}});
+            phi += phiSpacing;
+        }
+        theta += thetaSpacing;
+    }
+}
+
+Matrix Donut::rotate(float angleAbtX, float angleAbtZ, int i, Matrix &allVectors)
+{
+    float x = allVectors[i][0];
+    float y = allVectors[i][1];
+    float z = allVectors[i][2];
+    float x1 = x*cos(angleAbtZ) - y*cos(angleAbtX)*sin(angleAbtZ) + z*sin(angleAbtX)*sin(angleAbtZ);
+    float y1 = x*sin(angleAbtZ) + y*cos(angleAbtX)*cos(angleAbtZ) - z*sin(angleAbtX)*cos(angleAbtZ);
+    float z1 = y*sin(angleAbtX) + z*cos(angleAbtX);
+    return {{x1, y1, z1}};
+}
