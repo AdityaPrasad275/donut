@@ -1,22 +1,29 @@
 #include<bits/stdc++.h>
+typedef std::vector<std::vector<float>> Matrix;
+Matrix operator*(const Matrix &a, const Matrix &b);
 
-class donut
+class Donut
 {
-private:
-    //how fine we want to draw the torus
-    double thetaSpacing, phiSpacing;
-
-    //a circle (in x-y plane) centered on (R2, 0, 0) with radius R1 is rotated about y axis to get torus
-    int r1, r2;
-
-    int screenWidth, screenHeight; 
-    float k2;
-    float K1 = screenWidth*k2*3/(8*(r1+r2));
-    std::vector<float> calc_cords_XYZ(double theta, double phi, double angleOfRotationAboutX, double angleOfRotationAboutY);
-    int calc_luminance();
 public:
-    donut(/* args */);
-    ~donut();
-    rendering();
+    struct initialXYcurve{
+        float (*equationX)(float);
+        float (*equationY)(float);
+        float startTheta;
+        float endTheta;
+    };
+    Donut();
+    Donut(initialXYcurve& _initCurve, float k1, float k2, int screenWidth, int screenHeight, float thetaSpacing = 0.07, float phiSpacing = 0.02);
+    ~Donut();
+    void rendering();
+
+private:
+    //how fine we want to draw the shape
+    float thetaSpacing, phiSpacing;
+
+    initialXYcurve _initialXYcurve;
+    int screenWidth, screenHeight; 
+    float k2, k1; //these handle the size and distance from screen of the our 3d shape
+
+    Matrix calc_cords_XYZ(float theta, float phi, float angleOfRotationAboutX, float angleOfRotationAboutZ);
 };
 
